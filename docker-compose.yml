@@ -26,8 +26,8 @@ services:
       - cache:/seek/tmp/cache
       - ./${NGINX_CONF:-nginx.conf.http}:/seek/docker/nginx.conf.template
       - ./${DHO_TERMS:-standard}.en.yml:/seek/config/locales/overrides/dho-terms.en.yml
-    ports:
-      - ${SEEK_PORT:-3000}:3000
+#    ports:
+#      - ${SEEK_PORT:-3000}:3000
     depends_on:
       - db
       - solr
@@ -43,7 +43,11 @@ services:
       RAILS_ENV: production
       SOLR_PORT: 8983
       SOLR_HOST: solr
-      RAILS_RELATIVE_URL_ROOT: "/"
+      RAILS_RELATIVE_URL_ROOT: "${RAILS_RELATIVE_URL_ROOT:-/}"
+    # Add the network here too
+    networks:
+      - default
+      - digitaltwins
     env_file:
       - docker-compose.env
     volumes:
