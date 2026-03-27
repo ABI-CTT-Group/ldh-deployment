@@ -35,9 +35,6 @@ services:
     depends_on:
       - db
       - solr
-    links:
-      - db
-      - solr
 
   workers:
     image: ghcr.io/nfdi4health/ldh:${LDH_RELEASE:-latest}
@@ -58,9 +55,6 @@ services:
       - filestore:/seek/filestore
       - cache:/seek/tmp/cache
     depends_on:
-      - db
-      - solr
-    links:
       - db
       - solr
 
