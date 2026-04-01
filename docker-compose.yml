@@ -2,7 +2,7 @@ services:
   db:
     image: mysql:8.0
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    restart: unless-stopped 
+    restart: unless-stopped
     stop_grace_period: 1m30s
     env_file:
       - docker-compose.env
@@ -69,17 +69,22 @@ services:
       - docker-entrypoint.sh
       - solr-precreate
       - seek
-      - /opt/solr/server/solr/configsets/seek_config      
+      - /opt/solr/server/solr/configsets/seek_config
 
 volumes:
   filestore:
-    name: ${COMPOSE_PROJECT_NAME}_filestore
-    external: true
+    name: digitaltwins-platform_seek_filestore
+    external: false
+    driver: local
   db:
-    name: ${COMPOSE_PROJECT_NAME}_db
-    external: true
+    name: digitaltwins-platform_seek_db
+    external: false
+    driver: local
   solr:
+    name: digitaltwins-platform_solr
     external: false
+    driver: local
   cache:
+    name: digitaltwins-platform_seek_cache
     external: false
-
+    driver: local
