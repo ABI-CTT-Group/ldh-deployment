@@ -81,7 +81,7 @@ volumes:
     external: false
     driver: local
   solr:
-    name: digitaltwins-platform_solr
+    name: digitaltwins-platform_seek_solr
     external: false
     driver: local
   cache:
