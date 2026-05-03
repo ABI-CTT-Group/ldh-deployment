@@ -11,6 +11,7 @@ services:
 
   seek:
     image: ghcr.io/nfdi4health/ldh:${LDH_RELEASE:-latest}
+    container_name: seek
     command: docker/entrypoint.sh
     restart: unless-stopped
     environment:
@@ -18,7 +19,7 @@ services:
       SOLR_PORT: 8983
       SOLR_HOST: solr
       NO_ENTRYPOINT_WORKERS: 1
-      RAILS_RELATIVE_URL_ROOT: "/"
+      RAILS_RELATIVE_URL_ROOT: "${RAILS_RELATIVE_URL_ROOT:-/}"
     env_file:
       - docker-compose.env
     volumes:
@@ -26,35 +27,40 @@ services:
       - cache:/seek/tmp/cache
       - ./${NGINX_CONF:-nginx.conf.http}:/seek/docker/nginx.conf.template
       - ./${DHO_TERMS:-standard}.en.yml:/seek/config/locales/overrides/dho-terms.en.yml
-    ports:
-      - ${SEEK_PORT:-3000}:3000
+#    ports:
+#      - ${SEEK_PORT:-3000}:3000
+    networks:
+      - digitaltwins
     depends_on:
       - db
       - solr
-    links:
-      - db
-      - solr
+#    links:
+#      - db
+#      - solr
 
   workers:
     image: ghcr.io/nfdi4health/ldh:${LDH_RELEASE:-latest}
+    container_name: workers
     command: docker/start_workers.sh
     restart: unless-stopped
     environment:
       RAILS_ENV: production
       SOLR_PORT: 8983
       SOLR_HOST: solr
-      RAILS_RELATIVE_URL_ROOT: "/"
+      RAILS_RELATIVE_URL_ROOT: "${RAILS_RELATIVE_URL_ROOT:-/}"
     env_file:
       - docker-compose.env
+    networks:
+      - digitaltwins
     volumes:
       - filestore:/seek/filestore
       - cache:/seek/tmp/cache
     depends_on:
       - db
       - solr
-    links:
-      - db
-      - solr
+#    links:
+#      - db
+#      - solr
 
   solr:
     image: fairdom/seek-solr:8.11
