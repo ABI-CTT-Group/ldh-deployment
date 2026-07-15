@@ -18,7 +18,8 @@ services:
       SOLR_PORT: 8983
       SOLR_HOST: solr
       NO_ENTRYPOINT_WORKERS: 1
-      RAILS_RELATIVE_URL_ROOT: "/"
+      # for proxy redirect
+      RAILS_RELATIVE_URL_ROOT: "/seek"
     env_file:
       - docker-compose.env
     volumes:
@@ -43,7 +44,8 @@ services:
       RAILS_ENV: production
       SOLR_PORT: 8983
       SOLR_HOST: solr
-      RAILS_RELATIVE_URL_ROOT: "/"
+      # for proxy redirect
+      RAILS_RELATIVE_URL_ROOT: "/seek"
     env_file:
       - docker-compose.env
     volumes:
