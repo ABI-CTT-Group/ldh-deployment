@@ -20,6 +20,13 @@ services:
       NO_ENTRYPOINT_WORKERS: 1
       # for proxy redirect
       RAILS_RELATIVE_URL_ROOT: "/seek"
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/auth}
+      SEEK_KEYCLOAK_CLIENT_SECRET: ${SEEK_KEYCLOAK_CLIENT_SECRET}
+      PLATFORM_PROTOCOL: ${PLATFORM_PROTOCOL:-http}
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-localhost}
+    extra_hosts:
+      - "${PLATFORM_DOMAIN:-localhost}:host-gateway"
     env_file:
       - docker-compose.env
     volumes:
@@ -27,6 +34,7 @@ services:
       - cache:/seek/tmp/cache
       - ./${NGINX_CONF:-nginx.conf.http}:/seek/docker/nginx.conf.template
       - ./${DHO_TERMS:-standard}.en.yml:/seek/config/locales/overrides/dho-terms.en.yml
+      - ./keycloak_oidc.rb:/seek/config/initializers/keycloak_oidc.rb:ro
     ports:
       - ${SEEK_PORT:-3000}:3000
     depends_on:
@@ -46,6 +54,12 @@ services:
       SOLR_HOST: solr
       # for proxy redirect
       RAILS_RELATIVE_URL_ROOT: "/seek"
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
+      SEEK_KEYCLOAK_CLIENT_SECRET: ${SEEK_KEYCLOAK_CLIENT_SECRET}
+      PLATFORM_PROTOCOL: ${PLATFORM_PROTOCOL:-http}
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-localhost}
+    extra_hosts:
+      - "${PLATFORM_DOMAIN:-localhost}:host-gateway"
     env_file:
       - docker-compose.env
     volumes:
