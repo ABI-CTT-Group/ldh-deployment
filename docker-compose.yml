@@ -35,6 +35,7 @@ services:
       - ./${NGINX_CONF:-nginx.conf.http}:/seek/docker/nginx.conf.template
       - ./${DHO_TERMS:-standard}.en.yml:/seek/config/locales/overrides/dho-terms.en.yml
       - ./keycloak_oidc.rb:/seek/config/initializers/keycloak_oidc.rb:ro
+      - ./keycloak_jwt_auth.rb:/seek/config/initializers/keycloak_jwt_auth.rb:ro
     ports:
       - ${SEEK_PORT:-3000}:3000
     depends_on:
