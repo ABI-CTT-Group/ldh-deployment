@@ -6,6 +6,12 @@ services:
     stop_grace_period: 1m30s
     env_file:
       - docker-compose.env
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     volumes:
       - db:/var/lib/mysql
 
@@ -38,9 +44,17 @@ services:
       - ./keycloak_jwt_auth.rb:/seek/config/initializers/keycloak_jwt_auth.rb:ro
     ports:
       - ${SEEK_PORT:-3000}:3000
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:3000/seek/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - db
-      - solr
+      db:
+        condition: service_healthy
+      solr:
+        condition: service_healthy
     links:
       - db
       - solr
@@ -66,9 +80,17 @@ services:
     volumes:
       - filestore:/seek/filestore
       - cache:/seek/tmp/cache
+    healthcheck:
+      test: ["CMD-SHELL", "ps -ef | grep -q '[d]elayed_job' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     depends_on:
-      - db
-      - solr
+      db:
+        condition: service_healthy
+      solr:
+        condition: service_healthy
     links:
       - db
       - solr
@@ -82,6 +104,12 @@ services:
       LOG4J_FORMAT_MSG_NO_LOOKUPS: "true"
     volumes:
       - solr:/var/solr/
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8983/solr/admin/info/system >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     entrypoint:
       - docker-entrypoint.sh
       - solr-precreate
