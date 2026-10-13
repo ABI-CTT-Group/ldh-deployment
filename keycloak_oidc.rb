@@ -70,5 +70,20 @@ Rails.application.config.to_prepare do
       
       redirect_to logout_url
     end
+
+    # First /seek login for a Keycloak user SEEK has not seen: provision the
+    # account exactly as the API token path does (keycloak_jwt_auth.rb), so the
+    # user lands logged in instead of on SEEK's "create a profile" form.
+    # Only reached when Seek::Config.omniauth_user_create is on.
+    private def create_user_from_omniauth(auth)
+      @user = KeycloakJwtAuth.provision_user(
+        sub: auth.uid, email: auth.info.email, first_name: auth.info.first_name,
+        last_name: auth.info.last_name, username: auth.info.nickname)
+      if @user
+        check_login
+      else
+        failed_login "No #{Seek::Config.instance_name} account could be created for #{auth.info.email}; please contact an administrator."
+      end
+    end
   end
 end
