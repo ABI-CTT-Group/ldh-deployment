@@ -10,8 +10,10 @@
 #   3. Decodes and verifies the JWT (RS256) using the `jwt` gem.
 #   4. Looks up the SEEK User via the `identities` table
 #      (provider: 'oidc', uid: token['sub']).
-#   5. Returns the User if found, or nil (falls through to the next
-#      auth method in the chain).
+#   5. If no identity exists yet, provisions one (User + Person + Identity)
+#      from the token's claims — see provision_user.
+#   6. Returns the User, or nil (falls through to the next auth method in
+#      the chain).
 #
 # Mounted as a read-only volume in docker-compose.yml:
 #   ./keycloak_jwt_auth.rb:/seek/config/initializers/keycloak_jwt_auth.rb:ro
@@ -79,6 +81,62 @@ module KeycloakJwtAuth
         return nil
       end
     end
+
+    # Create an active SEEK User + Person + Identity for a Keycloak user SEEK
+    # has not seen yet, so neither an API call nor a /seek login needs the
+    # one-time SEEK registration form. Returns the User, or nil when it will
+    # not provision: no email, a client-credentials service account, or the
+    # email already belongs to a SEEK Person (never linked by email: the realm
+    # does not verify emails, so that would let one account take over another).
+    def provision_user(sub:, email:, first_name:, last_name:, username:)
+      return nil if sub.blank? || email.blank? || username.to_s.start_with?('service-account-')
+
+      with_provision_lock(sub) do
+        existing = Identity.find_by(provider: 'oidc', uid: sub)
+        next existing.user if existing&.user
+
+        clash = Person.where('LOWER(email) = ?', email.downcase).first
+        if clash
+          Rails.logger.warn "[keycloak_jwt_auth] Not provisioning sub=#{sub}: email already used by Person #{clash.id}"
+          next nil
+        end
+
+        user = nil
+        Seek::Permissions::Authorization.disable_authorization_checks do
+          ActiveRecord::Base.transaction do
+            person = Person.create!(first_name: first_name, last_name: last_name, email: email)
+            password = User.random_password
+            user = User.new(login: User.unique_login(username.presence || email.split('@').first),
+                            password: password, password_confirmation: password)
+            user.check_email_present = false
+            user.person = person
+            user.save!
+            user.activate
+            Identity.create!(provider: 'oidc', uid: sub, user: user)
+          end
+        end
+        Rails.logger.info "[keycloak_jwt_auth] Provisioned SEEK user #{user.id} (#{user.login}) for Keycloak sub=#{sub}"
+        user
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      Rails.logger.warn "[keycloak_jwt_auth] Could not provision SEEK user for sub=#{sub}: #{e.message}"
+      nil
+    end
+
+    private
+
+    # The identities (provider, uid) index is not unique, so serialise
+    # provisioning per sub across Puma workers with a MySQL named lock.
+    def with_provision_lock(sub)
+      conn = ActiveRecord::Base.connection
+      name = conn.quote("seek_kc_provision_#{sub}")
+      raise "timed out waiting for provisioning lock for sub=#{sub}" unless conn.select_value("SELECT GET_LOCK(#{name}, 10)") == 1
+      begin
+        yield
+      ensure
+        conn.select_value("SELECT RELEASE_LOCK(#{name})")
+      end
+    end
   end
 end
 
@@ -107,9 +165,11 @@ Rails.application.config.to_prepare do
       return nil unless sub.present?
 
       identity = Identity.find_by(provider: 'oidc', uid: sub)
-      return nil unless identity
+      user = identity&.user || KeycloakJwtAuth.provision_user(
+        sub: sub, email: payload['email'], first_name: payload['given_name'],
+        last_name: payload['family_name'], username: payload['preferred_username'])
+      return nil unless user
 
-      user = identity.user
       Rails.logger.info "[keycloak_jwt_auth] Authenticated SEEK user #{user.id} (#{user.login}) from Keycloak sub=#{sub}"
       user
     end
