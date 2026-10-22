@@ -2,6 +2,7 @@
 
 Deployment instructions and resources for an NFDI4Health Local Data Hub.
 
+This bases on the github projects [nfid4health/ldh](https://github.com/nfdi4health/ldh); an extension of [seek4science/seek](https://github.com/seek4science/seek).
 
 ## Disclaimer
 
@@ -56,6 +57,7 @@ cp .env.tpl .env
     * SEEK_PORT is the port you will reach LDH on this host. Default is "3000"; e.g http://localhost:3000
     * DHO_TERMS is the basename of an file overriding the standard term in the user interface - useful e.g. if you prefer "Sponsor" over "Programme" oder "Trial Project" instead of "Project" as in included "clinical-trials.en.yml". Default is "standard.en.yml".
     * LDH_RELEASE is the relase to load, e.g. v0.2.2. Default is "latest".
+    * LDH_EXP_RELEASE is the relase for CSH Exporter. Default is "latest". Only used in docker-compose-exporter.yml
     * NGINX_CONF is overrinding the SEEK intername configuration for nginx; see below. Default is "nginx.conf.http".
 
 * Database configuration is specified in `docker-compose.env`. This is created by copying `docker-compose.env.tpl` to `docker-compose.env` and replace `<some-password>` with a password-  either manually or using the openssl command, e.g.
@@ -83,6 +85,11 @@ docker volume create ${COMPOSE_PROJECT_NAME}_db
 docker compose up -d
 
 ```
+or if you want to host and use the exporter to Health Study Hub on premise
+```
+docker compose -f docker-compose-exporter.yml up -d
+``` 
+
 Wait a minute and direct browser to http://localhost:3000 to reach signup page.
 If you get a "502 Bad Gateway" wait a litte longer.
 You can watch the logs with
@@ -141,6 +148,10 @@ proxy_set_header X-Forwarded-Ssl on;
 ```
 "nginx.conf.https" contains these parameters and overwrites the original configuration ("nginx.conf.http"), which is default here.
 
+## Embedd the Export-Converter for Health Study Hub
+If you are using this feature without the free online service provided by Leipzig University, you can integrate the “ldh-exporter” image locally.
+Please use docker-compose-exporter.yml instead of docker-compose.yml.
+Add a line "LDH_EXP_RELEASE=v2.9" (check version) to your .env file.
 
 ## Go further
 The above working setting can be altered in many ways:
@@ -149,7 +160,7 @@ The above working setting can be altered in many ways:
 * like to use Container-Orchestration like Kubernetes?
 * want to expose your LDH to the internet - ask you local sysadmin!
 * Backup/Restore can be based on volumes too
-* see https://docs.docker.com/ from more
+* see https://docs.docker.com/ for more
 
 
 
