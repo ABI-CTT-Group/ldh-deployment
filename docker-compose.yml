@@ -1,17 +1,21 @@
 services:
   db:
-    image: mysql:8.0
+    image: mysql:8.4
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     restart: unless-stopped
     stop_grace_period: 1m30s
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     env_file:
       - docker-compose.env
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
     volumes:
       - db:/var/lib/mysql
 
@@ -23,6 +27,7 @@ services:
       RAILS_ENV: production
       SOLR_PORT: 8983
       SOLR_HOST: solr
+      RAILS_LOG_LEVEL: info # debug, info, warn, error or fatal
       NO_ENTRYPOINT_WORKERS: 1
       # for proxy redirect
       RAILS_RELATIVE_URL_ROOT: "/seek"
@@ -55,9 +60,6 @@ services:
         condition: service_healthy
       solr:
         condition: service_healthy
-    links:
-      - db
-      - solr
 
   workers:
     image: ghcr.io/nfdi4health/ldh:${LDH_RELEASE:-latest}
@@ -91,12 +93,9 @@ services:
         condition: service_healthy
       solr:
         condition: service_healthy
-    links:
-      - db
-      - solr
 
   solr:
-    image: fairdom/seek-solr:8.11
+    image: fairdom/seek-solr:8.11.4
     restart: unless-stopped
     environment:
       SOLR_JAVA_MEM: -Xms512m -Xmx1024m
@@ -105,16 +104,32 @@ services:
     volumes:
       - solr:/var/solr/
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8983/solr/admin/info/system >/dev/null || exit 1"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8983/solr/seek/admin/ping"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     entrypoint:
       - docker-entrypoint.sh
       - solr-precreate
       - seek
       - /opt/solr/server/solr/configsets/seek_config
+
+  exporter:
+    # Off by default: start with `docker compose --profile exporter up -d`.
+    profiles: [exporter]
+    image: fmeineke/ldh-exp:${LDH_EXP_RELEASE:-latest}
+    restart: unless-stopped
+    environment:
+      # SEEK is served under RAILS_RELATIVE_URL_ROOT (/seek)
+      LDH_SOURCE: http://seek:3000/seek
+      LDH_EXP: http://localhost:3001
+    # optional, no need to expose
+    # Set Enable or disable features/NFDI4Health URL Enable or disable features
+    #  / The URL transforming for the NFDI4Health publish rest service. to
+    # http://exporter:8083/export
+    # ports:
+    #  - "3001:8083"
 
 volumes:
   filestore:
