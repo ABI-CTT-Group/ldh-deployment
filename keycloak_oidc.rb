@@ -48,7 +48,9 @@ Rails.autoloaders.main.on_load('Seek::Config') do |config|
           authorization_endpoint: "#{ENV['KEYCLOAK_PUBLIC_URL']}/realms/digitaltwins/protocol/openid-connect/auth",
           token_endpoint: '/auth/realms/digitaltwins/protocol/openid-connect/token',
           userinfo_endpoint: '/auth/realms/digitaltwins/protocol/openid-connect/userinfo',
-          jwks_uri: '/auth/realms/digitaltwins/protocol/openid-connect/certs'
+          # Absolute: omniauth_openid_connect >= 0.8 fetches jwks_uri as given,
+          # without applying scheme/host/port above.
+          jwks_uri: "#{internal_base}/realms/digitaltwins/protocol/openid-connect/certs"
         }
       }]
 
